@@ -1,0 +1,95 @@
+version: '3'
+
+services:
+  zookeeper:
+    image: arm64v8/zookeeper
+    container_name: ktech_zookeeper
+    ports:
+     - "2181:2181"
+    restart: unless-stopped
+
+  kafka:
+    image: wurstmeister/kafka
+    container_name: ktech_kafka
+    ports:
+     - "9094:9094"
+    platform: linux/arm64
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ADVERTISED_HOST_NAME: "localhost"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_CREATE_TOPICS: "reddit-submissions:1:1, reddit-subreddit:1:1"
+
+      KAFKA_LOG_RETENTION_HOURS: 1
+      KAFKA_LOG_RETENTION_BYTES: 4073741824
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_RETENTION_CHECK_INTERVAL_MS: 300000      
+      KAFKA_SOCKET_REQUEST_MAX_BYTES:	2147483647
+      KAFKA_SOCKET_SEND_BUFFER_BYTES:	902400
+      KAFKA_HEAP_OPTS: -Xmx1G -Xms1G
+
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9094
+      ## OR
+      # KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,OUTSIDE://0.0.0.0:9094
+      # KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,OUTSIDE://localhost:9094
+      # KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,OUTSIDE:PLAINTEXT
+      # KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+    volumes:
+     - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+  postgresql:
+    image: postgres:latest
+    container_name: ktech_postgresql
+    restart: always
+    environment:
+      POSTGRES_DB: cryptocurrency-info
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
+    volumes:
+      # - ./scripts/init-db.sql:/docker-entrypoint-init-db.d/init.sql
+      - postgres_data:/var/lib/postgresql/data/
+    networks:
+      - bridge
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: ktech_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@cryptocurrency-info.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgresql  
+
+  grafana:
+    image: grafana/grafana-oss:8.4.3
+    container_name: ktech_grafana
+    volumes:
+      - grafana-storage:/var/lib/grafana:rw
+    depends_on:
+      - postgresql
+    ports:
+      - 3000:3000
+    networks:
+      - bridge
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  grafana-storage:
+
+networks:
+  bridge:

@@ -1,0 +1,7 @@
+DB_PORT=5432
+TOPIC="test"
+DB_TABLE_NAME='test'
+BROKER_EXTERNAL_PORT=9094
+DOCKER_CONTAINER_HOST="127.0.0.1"
+KAFKA_TOPIC_NAME="reddit-submissions"
+# DB_COLUMNS=(id,first_name,last_name)
